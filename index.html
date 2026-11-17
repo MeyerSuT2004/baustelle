@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#123f63">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.png">
+<title>Baustelle – Meyer</title>
+<style>
+:root{--b:#123f63;--b2:#1f6fb5;--ha:#3aa0a8;--g:#e9eef2;--t:#1c2a35;--gut:#1e8a4c;--warn:#d32f2f;--or:#ef6c00}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:18px/1.35 system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--t);background:#f4f6f8}
+header{position:sticky;top:0;z-index:5;background:var(--b);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 14px}
+header h1{font-size:19px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header button{background:transparent;border:1px solid #fff8;color:#fff;border-radius:8px;padding:6px 12px;font-size:16px}
+main{padding:14px;max-width:1100px;margin:auto}
+.kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.k{position:relative;background:#fff;border:2px solid #d6dde2;border-radius:14px;padding:14px 12px;min-height:96px;display:flex;flex-direction:column;justify-content:center;gap:4px;
+   cursor:pointer;user-select:none;transition:transform .12s,box-shadow .2s,border-color .2s,background .2s;animation:rein .35s both}
+.k:active{transform:scale(.95)}
+.k.an{border-color:var(--b2);background:#e8f1fb;box-shadow:0 4px 14px #1f6fb533}
+.k.an::after{content:"✓";position:absolute;right:10px;top:6px;font-size:22px;color:var(--b2);animation:plopp .3s}
+.k .gross{font-size:30px}.k .klein{font-size:13px;color:#5d6b76}.k b{font-size:17px}
+.k.fertig{border-color:var(--gut)}.k.fertig::before{content:"●";position:absolute;right:10px;top:6px;color:var(--gut)}
+.k.ha{border-left:8px solid var(--ha)}.k.sl{border-left:8px solid var(--b2)}
+@keyframes rein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes plopp{from{transform:scale(0)}to{transform:scale(1)}}
+h2{margin:18px 0 10px;font-size:21px}
+.leiste{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+button.h,button.n{font-size:18px;border-radius:10px;padding:12px 18px;border:0;background:var(--b2);color:#fff}
+button.n{background:#fff;color:var(--b);border:2px solid var(--b)}
+button:disabled{opacity:.4}
+input,textarea,select{font:inherit;padding:10px;border:2px solid #cfd8de;border-radius:10px;width:100%;background:#fff}
+label{display:block;font-size:14px;color:#5d6b76;margin:10px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid #cfd8de;background:#fff;border-radius:22px;padding:8px 14px;font-size:16px}
+.chip.an{background:var(--b2);border-color:var(--b2);color:#fff}
+.karte{background:#fff;border-radius:14px;padding:14px;margin:12px 0;border:1px solid #dde3e8}
+.grau{color:#5d6b76;font-size:15px}
+.hinweis{background:#fff4e5;border-left:5px solid var(--or);padding:10px;border-radius:8px;margin:8px 0;font-size:16px}
+.fehler{background:#fdecec;border-left:5px solid var(--warn);padding:10px;border-radius:8px;margin:8px 0;font-size:16px}
+.ok{background:#e7f6ec;border-left:5px solid var(--gut);padding:10px;border-radius:8px;margin:8px 0;font-size:16px}
+.raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 14px}
+.fortschritt{height:8px;background:var(--g);border-radius:4px;overflow:hidden;margin:6px 0 12px}.fortschritt i{display:block;height:100%;background:var(--ha);transition:width .4s}
+.wiz{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px}
+@media (max-width:800px){.wiz{grid-template-columns:1fr}}
+.fotos{display:flex;gap:8px;flex-wrap:wrap}.fotos img{height:90px;border-radius:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:10px;z-index:9;animation:rein .3s}
+.skizze{position:relative;touch-action:none;max-width:700px}.skizze img{width:100%;display:block}.skizze .r{position:absolute;border:3px solid var(--warn);background:#d32f2f33}
+.regel{background:var(--b);color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;margin:8px 0}
+svg text{font-family:Arial}
+</style></head>
+<body><header><h1 id="titel">Baustelle</h1><span id="kopfr"></span></header><main id="m"></main>
+<script>
+"use strict";
+/* ---------- Speicher (nur auf diesem Tablet) ---------- */
+const DB={db:null,async auf(){if(this.db)return this.db;this.db=await new Promise((ok,f)=>{const r=indexedDB.open("baustelle",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>ok(r.result);r.onerror=()=>f(r.error)});return this.db},
+ async get(k){const d=await this.auf();return new Promise(ok=>{const r=d.transaction("kv").objectStore("kv").get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(undefined)})},
+ async set(k,v){const d=await this.auf();return new Promise((ok,f)=>{const t=d.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=ok;t.onerror=()=>f(t.error)})},
+ async del(k){const d=await this.auf();return new Promise(ok=>{const t=d.transaction("kv","readwrite");t.objectStore("kv").delete(k);t.oncomplete=ok})}};
+let PAKET=null,POLIER="",MELD=[],AKT=null;           // AKT = aktuelle Meldung
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+const heute=()=>new Date().toISOString().slice(0,10),dt=i=>i?i.slice(8,10)+"."+i.slice(5,7)+"."+i.slice(0,4):"";
+const zahl=s=>{if(s===undefined||s===null)return null;const t=String(s).replace(",",".").trim();if(!t)return null;const n=Number(t);return isFinite(n)?n:null},fz=(n,s=2)=>n===null||n===undefined||!isFinite(n)?"":n.toFixed(s).replace(".",",");
+function toast(t){const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
+async function sichern(){if(AKT){AKT.geaendert=new Date().toISOString();const i=MELD.findIndex(x=>x.id===AKT.id);if(i<0)MELD.unshift(AKT);else MELD[i]=AKT}await DB.set("meldungen",MELD)}
+function gps(){return new Promise(ok=>{if(!navigator.geolocation)return ok(null);navigator.geolocation.getCurrentPosition(p=>ok({lat:+p.coords.latitude.toFixed(6),lon:+p.coords.longitude.toFixed(6),gen:Math.round(p.coords.accuracy)}),()=>ok(null),{enableHighAccuracy:true,timeout:8000,maximumAge:60000})})}
+const km=(a,b)=>{const r=Math.PI/180,x=(b.lon-a.lon)*r*Math.cos((a.lat+b.lat)/2*r),y=(b.lat-a.lat)*r;return Math.sqrt(x*x+y*y)*6371};
+function kopf(t,zurueck){$("#titel").textContent=t;$("#kopfr").innerHTML=zurueck?`<button onclick="${zurueck}">← Zurück</button>`:`<button onclick="datenLaden()">Daten laden</button>`;scrollTo(0,0)}
+
+/* ---------- Start ---------- */
+async function start(){PAKET=await DB.get("paket")||null;POLIER=await DB.get("polier")||"";MELD=await DB.get("meldungen")||[];
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if(!PAKET)return ersteSchritte();if(!POLIER)return polierWaehlen();home()}
+function ersteSchritte(){kopf("Einrichten");$("#m").innerHTML=`<div class="karte"><h2>Willkommen</h2><p>Das Büro legt die Datei <b>SN-Tablet-Daten.json</b> im OneDrive-Ordner ab. Öffnen Sie sie hier einmal – danach kennt die App Aufträge, Mitarbeiter und Geräte.</p>
+  <button class="h" onclick="datenLaden()">Datei aus OneDrive öffnen</button><p class="grau">Alle Eingaben bleiben auf diesem Tablet, bis Sie sie selbst senden.</p></div>`}
+function datenLaden(){const i=document.createElement("input");i.type="file";i.accept=".json,application/json,text/plain";i.onchange=async()=>{try{const p=JSON.parse(await i.files[0].text());
+  if(p.typ!=="sn-tablet-daten")throw new Error("Das ist nicht die Datei SN-Tablet-Daten.json.");PAKET=p;await DB.set("paket",p);toast(`Daten vom ${dt(p.erstellt.slice(0,10))} geladen: ${p.auftraege.length} Aufträge`);POLIER?home():polierWaehlen()}catch(e){alert(e.message)}};i.click()}
+function polierWaehlen(){kopf("Wer sind Sie?");$("#m").innerHTML=`<p class="grau">Einmal auswählen – das Tablet merkt es sich.</p><div class="kacheln">${PAKET.mitarbeiter.map(m=>`<div class="k" onclick="polierSetzen('${esc(m.name)}')"><span class="gross">👷</span><b>${esc(m.name)}</b><span class="klein">${esc(m.beruf||"")}</span></div>`).join("")}</div>`}
+async function polierSetzen(n){POLIER=n;await DB.set("polier",n);home()}
+
+async function home(){AKT=null;kopf("Baustelle – "+POLIER);const pos=await gps();
+  const au=[...PAKET.auftraege].map(a=>({...a,km:pos&&a.gps?km(pos,a.gps):null})).sort((a,b)=>(a.km??1e9)-(b.km??1e9));
+  const offen=MELD.filter(x=>!x.gesendet),ges=MELD.filter(x=>x.gesendet).slice(0,10);
+  $("#m").innerHTML=`${offen.length?`<h2>Begonnen – noch nicht gesendet</h2><div class="kacheln">${offen.map(kachelMeldung).join("")}</div>`:""}
+  <h2>Auftrag wählen – ${dt(heute())}</h2><div class="kacheln">
+   <div class="k" onclick="neueMeldung(null)"><span class="gross">＋</span><b>Neuer Auftrag</b><span class="klein">noch nicht im Büro angelegt</span></div>
+   ${au.map(a=>`<div class="k ${a.art==="hausanschluss"?"ha":"sl"}" onclick="neueMeldung(${a.id})"><span class="klein">${a.art==="hausanschluss"?"Hausanschluss":"Stundenlohn"}${a.km!==null?` · ${a.km<1?Math.round(a.km*1000)+" m":fz(a.km,1)+" km"}`:""}</span><b>${esc(a.bezeichnung||a.auftragsnr)}</b><span class="klein">${esc(a.projektnr)} ${esc(a.auftragsnr||"")}</span></div>`).join("")}</div>
+  ${ges.length?`<h2>Zuletzt gesendet</h2><div class="kacheln">${ges.map(kachelMeldung).join("")}</div>`:""}
+  <p class="grau" style="margin-top:20px">Daten vom ${dt((PAKET.erstellt||"").slice(0,10))} · <a href="#" onclick="polierWaehlen();return false">Person wechseln</a></p>`}
+function kachelMeldung(x){return `<div class="k ${x.art==="hausanschluss"?"ha":"sl"} ${x.gesendet?"fertig":""}" onclick="oeffne('${x.id}')"><span class="klein">${dt(x.datum)}${x.gesendet?" · gesendet":""}</span><b>${esc(x.auftrag.bezeichnung||"Neuer Auftrag")}</b><span class="klein">${(x.kolonne||[]).length} Personen · ${(x.geraete||[]).length} Geräte</span></div>`}
+async function neueMeldung(aid){const a=aid?PAKET.auftraege.find(x=>x.id===aid):null;const letzte=MELD.find(x=>x.polier===POLIER&&(x.kolonne||[]).length);
+  const vorhanden=MELD.find(x=>!x.gesendet&&x.datum===heute()&&x.auftrag.id===aid&&aid);if(vorhanden)return oeffne(vorhanden.id);
+  AKT={typ:"sn-meldung",v:1,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),polier:POLIER,datum:heute(),erstellt:new Date().toISOString(),
+    art:a?a.art:"stundenlohn",auftrag:a?{id:a.id,projektnr:a.projektnr,auftragsnr:a.auftragsnr,bezeichnung:a.bezeichnung}:{id:null,bezeichnung:"",strasse:"",ort:""},
+    kolonne:letzte?[...letzte.kolonne]:[POLIER],taetigkeit:"",geraete:[],aufbruch:null,ha:null,gps:await gps()};await sichern();uebersicht()}
+async function oeffne(id){AKT=MELD.find(x=>x.id===id);uebersicht()}
+
+/* ---------- Übersicht einer Meldung ---------- */
+function uebersicht(){const a=AKT,ha=a.art==="hausanschluss";kopf(a.auftrag.bezeichnung||"Neuer Auftrag","home()");
+  $("#m").innerHTML=`<div class="karte">${a.auftrag.id?`<b>${esc(a.auftrag.projektnr)} ${esc(a.auftrag.auftragsnr||"")}</b> · ${ha?"Hausanschluss":"Stundenlohn"}`:
+   `<div class="raster"><div><label>Bezeichnung / Straße, Hausnummer</label><input value="${esc(a.auftrag.bezeichnung)}" oninput="AKT.auftrag.bezeichnung=this.value;sichern()"></div><div><label>Ort</label><input value="${esc(a.auftrag.ort)}" oninput="AKT.auftrag.ort=this.value;sichern()"></div></div>
+   <div class="chips" style="margin-top:8px"><button class="chip ${!ha?"an":""}" onclick="AKT.art='stundenlohn';sichern();uebersicht()">Stundenlohn</button><button class="chip ${ha?"an":""}" onclick="AKT.art='hausanschluss';sichern();uebersicht()">Hausanschluss</button></div>`}
+   <label>Datum</label><input type="date" value="${a.datum}" style="max-width:220px" onchange="AKT.datum=this.value;sichern()"></div>
+  <div class="kacheln">
+   ${kachel("👷","Wer ist dabei?",`${a.kolonne.length} Personen`,a.kolonne.length,"kolonne()")}
+   ${kachel("📝","Was wird gemacht?",a.taetigkeit?a.taetigkeit.slice(0,40)+"…":"noch nichts",a.taetigkeit,"taetigkeit()")}
+   ${kachel("🚜","Welche Geräte?",`${a.geraete.length} Geräte`,a.geraete.length,"geraeteW()")}
+   ${kachel("📷","Aufbruch",a.aufbruch?`${fz(flaeche())} m² · ${(a.aufbruch.fotos||[]).length} Fotos`:"kein Aufbruch",a.aufbruch,"aufbruch()")}
+   ${ha?kachel("📐","Hausanschluss-Skizze",a.ha?`Schritt ${Math.min(a.ha.schritt+1,SCHRITTE.length)} von ${SCHRITTE.length}`:"starten",a.ha&&a.ha.fertig,"haStart()"):""}
+  </div>
+  <div class="leiste" style="margin-top:22px"><button class="h" onclick="senden()">📤 An das Büro senden</button>${a.gesendet?`<span class="grau">gesendet am ${dt(a.gesendet.slice(0,10))} – erneut senden ersetzt nichts im Büro, es kommt als neue Meldung an.</span>`:""}
+   <button class="n" onclick="loeschen()">Löschen</button></div>`}
+function kachel(ic,t,u,fertig,klick){return `<div class="k ${fertig?"fertig":""}" onclick="${klick}"><span class="gross">${ic}</span><b>${t}</b><span class="klein">${esc(u)}</span></div>`}
+async function loeschen(){if(!confirm("Diese Meldung auf dem Tablet löschen?"))return;MELD=MELD.filter(x=>x.id!==AKT.id);await DB.set("meldungen",MELD);home()}
+
+/* ---------- Kolonne, Tätigkeit, Geräte ---------- */
+function kolonne(){kopf("Wer ist dabei?","uebersicht()");const k=AKT.kolonne;
+  $("#m").innerHTML=`<p class="grau">Antippen = dabei. Die Stunden kommen aus der Zeiterfassung.</p><div class="kacheln">${PAKET.mitarbeiter.map(m=>`<div class="k ${k.includes(m.name)?"an":""}" onclick="umschalten(AKT.kolonne,'${esc(m.name)}',this)"><span class="gross">${m.name===POLIER?"⭐":"👷"}</span><b>${esc(m.name)}</b><span class="klein">${esc(m.beruf||"")}</span></div>`).join("")}</div>
+  <div class="leiste"><button class="h" onclick="uebersicht()">Fertig</button></div>`}
+function umschalten(liste,w,el){const i=liste.indexOf(w);if(i<0)liste.push(w);else liste.splice(i,1);el.classList.toggle("an");sichern()}
+function taetigkeit(){kopf("Was wird gemacht?","uebersicht()");
+  $("#m").innerHTML=`<textarea id="tt" rows="4" oninput="AKT.taetigkeit=this.value;sichern()">${esc(AKT.taetigkeit)}</textarea>
+  <h2>Antippen zum Einfügen</h2><div class="chips">${(PAKET.bausteine||[]).map((t,i)=>`<button class="chip" onclick="baustein(${i})">${esc(t)}</button>`).join("")}</div>
+  <div class="leiste"><button class="h" onclick="uebersicht()">Fertig</button></div>`}
+function baustein(i){const t=PAKET.bausteine[i],a=AKT.taetigkeit.trim();AKT.taetigkeit=a?a.replace(/[;\s]+$/,"")+"; "+t:t;$("#tt").value=AKT.taetigkeit;sichern()}
+const istTransporter=g=>/transporter/i.test(g.kurztext||g.text||"");
+const SYM=t=>/bagger/i.test(t)?"🚜":/lkw|unimog/i.test(t)?"🚚":/transporter/i.test(t)?"🚐":/pumpe/i.test(t)?"💧":/aggregat|strom|beleucht/i.test(t)?"⚡":/kompressor|hammer/i.test(t)?"🔨":/platte|stampfer|walze/i.test(t)?"⬛":/säge|schneid|trenn|fräse/i.test(t)?"🪚":/verbau/i.test(t)?"🧱":/kamera/i.test(t)?"📹":"🔧";
+function geraeteW(){kopf("Welche Geräte?","uebersicht()");const zuletzt=[...new Set(MELD.filter(x=>x.polier===POLIER).flatMap(x=>x.geraete.map(g=>g.pos)))];
+  const L=[...PAKET.geraete].sort((a,b)=>(zuletzt.indexOf(a.pos)<0?999:zuletzt.indexOf(a.pos))-(zuletzt.indexOf(b.pos)<0?999:zuletzt.indexOf(b.pos)));
+  $("#m").innerHTML=`<p class="grau">Antippen = benutzt. Stunden sind freiwillig – leer lassen, wenn das Büro sie eintragen soll. Der Transporter bekommt automatisch die längste Mitarbeiterzeit.</p>
+  <div class="kacheln">${L.map(g=>{const s=AKT.geraete.find(x=>x.pos===g.pos);return `<div class="k ${s?"an":""}" onclick="geraetTipp('${g.pos}')"><span class="gross">${SYM(g.kurztext)}</span><b style="font-size:15px">${esc(g.formulartext||g.kurztext)}</b><span class="klein">${g.pos}${s?" · "+(istTransporter(g)?"Stunden automatisch":s.stunden?fz(s.stunden)+" h":"Stunden: Büro"):""}</span></div>`}).join("")}</div>
+  <div id="std"></div><div class="leiste"><button class="h" onclick="uebersicht()">Fertig</button></div>`}
+function geraetTipp(pos){const g=PAKET.geraete.find(x=>x.pos===pos),s=AKT.geraete.find(x=>x.pos===pos);
+  if(!s){AKT.geraete.push({pos,text:g.formulartext||g.kurztext,stunden:null,auto_max:istTransporter(g)});sichern();if(istTransporter(g))return geraeteW()}
+  else if(istTransporter(g)){AKT.geraete=AKT.geraete.filter(x=>x.pos!==pos);sichern();return geraeteW()}
+  geraeteW();const z=AKT.geraete.find(x=>x.pos===pos);
+  $("#std").innerHTML=`<div class="karte"><b>${esc(z.text)}</b> – Stunden (freiwillig)<div class="chips" style="margin-top:8px">${[null,0.5,1,2,3,4,6,8].map(h=>`<button class="chip ${z.stunden===h?"an":""}" onclick="std('${pos}',${h})">${h===null?"Büro trägt ein":fz(h,1)+" h"}</button>`).join("")}</div>
+   <div class="leiste"><button class="n" onclick="AKT.geraete=AKT.geraete.filter(x=>x.pos!=='${pos}');sichern();geraeteW()">Gerät entfernen</button></div></div>`;$("#std").scrollIntoView({behavior:"smooth"})}
+function std(pos,h){AKT.geraete.find(x=>x.pos===pos).stunden=h;sichern();geraeteW()}
+
+/* ---------- Fotos ---------- */
+function foto(){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";
+  i.onchange=async()=>{const f=i.files[0];if(!f)return ok(null);const bild=await createImageBitmap(f),s=Math.min(1,1600/Math.max(bild.width,bild.height)),c=document.createElement("canvas");
+   c.width=Math.round(bild.width*s);c.height=Math.round(bild.height*s);c.getContext("2d").drawImage(bild,0,0,c.width,c.height);ok({data:c.toDataURL("image/jpeg",0.7),zeit:new Date().toISOString(),gps:await gps()})};i.click()})}
+
+/* ---------- Aufbruch ---------- */
+const LAGE=[["fahrbahn","Fahrbahn"],["berme","Berme"],["gehweg","Gehweg"],["schutzstreifen","Schutzstreifen"],["radweg","Radweg"],["fussgaengerzone","Fußgängerzone"],["gruenflaeche","Grünfläche"]];
+const OBER=[["schwarzdecke","Asphalt"],["pflaster","Pflaster"],["schotter","Schotter"],["mutterboden","Mutterboden/Rasen"]];
+const flaeche=()=>{const a=AKT.aufbruch;return a?(zahl(a.laenge)||0)*(zahl(a.breite)||0):0};
+function aufbruch(){kopf("Aufbruch","uebersicht()");const a=AKT.aufbruch;
+  if(!a){$("#m").innerHTML=`<div class="kacheln"><div class="k" onclick="AKT.aufbruch={lage:[],ober:[],laenge:'',breite:'',aufbau:'',rechtecke:[],fotos:[],wie_vorher:false,notpflaster:false};sichern();aufbruch()"><span class="gross">⛏️</span><b>Es gibt einen Aufbruch</b></div>
+    <div class="k" onclick="uebersicht()"><span class="gross">✋</span><b>Kein Aufbruch</b></div></div>`;return}
+  $("#m").innerHTML=`<h2>1. Foto der Aufbruchfläche</h2><div class="fotos">${a.fotos.map((f,i)=>`<img src="${f.data}" onclick="if(confirm('Foto entfernen?')){AKT.aufbruch.fotos.splice(${i},1);sichern();aufbruch()}">`).join("")}</div>
+   <div class="leiste"><button class="h" onclick="aufbruchFoto()">📷 Foto machen</button></div>
+  <h2>2. Wo?</h2><div class="chips">${LAGE.map(([k,t])=>`<button class="chip ${a.lage.includes(k)?"an":""}" onclick="umschalten(AKT.aufbruch.lage,'${k}',this)">${t}</button>`).join("")}</div>
+  <h2>3. Oberfläche</h2><div class="chips">${OBER.map(([k,t])=>`<button class="chip ${a.ober.includes(k)?"an":""}" onclick="umschalten(AKT.aufbruch.ober,'${k}',this)">${t}</button>`).join("")}</div>
+  <h2>4. Größe</h2><div class="raster"><div><label>Länge (m)</label><input inputmode="decimal" value="${esc(a.laenge)}" oninput="AKT.aufbruch.laenge=this.value;sichern();$('#fl').textContent=fz(flaeche())"></div>
+   <div><label>Breite (m)</label><input inputmode="decimal" value="${esc(a.breite)}" oninput="AKT.aufbruch.breite=this.value;sichern();$('#fl').textContent=fz(flaeche())"></div>
+   <div><label>Aufbaustärke (m)</label><input inputmode="decimal" value="${esc(a.aufbau)}" oninput="AKT.aufbruch.aufbau=this.value;sichern()"></div></div><p>Fläche: <b id="fl">${fz(flaeche())}</b> m²</p>
+  <h2>5. Lage im Straßenquerschnitt</h2><p class="grau">Mit dem Finger ein Rechteck aufziehen; Antippen eines Rechtecks entfernt es.</p>
+  <div class="skizze" id="qs"><img src="skizze.png" alt="">${a.rechtecke.map((r,i)=>`<div class="r" style="left:${r.x*100}%;top:${r.y*100}%;width:${r.b*100}%;height:${r.h*100}%" onpointerdown="event.stopPropagation()" onclick="AKT.aufbruch.rechtecke.splice(${i},1);sichern();aufbruch()"></div>`).join("")}</div>
+  <h2>6. Oberfläche wiederhergestellt</h2><div class="chips"><button class="chip ${a.wie_vorher?"an":""}" onclick="AKT.aufbruch.wie_vorher=!AKT.aufbruch.wie_vorher;sichern();aufbruch()">wie vorher</button><button class="chip ${a.notpflaster?"an":""}" onclick="AKT.aufbruch.notpflaster=!AKT.aufbruch.notpflaster;sichern();aufbruch()">Notpflaster</button></div>
+  <div class="leiste"><button class="h" onclick="uebersicht()">Fertig</button><button class="n" onclick="if(confirm('Aufbruch entfernen?')){AKT.aufbruch=null;sichern();uebersicht()}">Doch kein Aufbruch</button></div>`;
+  rechteckZiehen($("#qs"),r=>{AKT.aufbruch.rechtecke.push(r);sichern();aufbruch()})}
+async function aufbruchFoto(){const f=await foto();if(f){AKT.aufbruch.fotos.push(f);await sichern();aufbruch()}}
+function rechteckZiehen(el,fertig){let s=null,box=null;el.onpointerdown=e=>{const r=el.getBoundingClientRect();s={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height,r};box=document.createElement("div");box.className="r";el.appendChild(box);el.setPointerCapture(e.pointerId)};
+  el.onpointermove=e=>{if(!s)return;const x=(e.clientX-s.r.left)/s.r.width,y=(e.clientY-s.r.top)/s.r.height;Object.assign(box.style,{left:Math.min(x,s.x)*100+"%",top:Math.min(y,s.y)*100+"%",width:Math.abs(x-s.x)*100+"%",height:Math.abs(y-s.y)*100+"%"})};
+  el.onpointerup=e=>{if(!s)return;const x=Math.max(0,Math.min(1,(e.clientX-s.r.left)/s.r.width)),y=Math.max(0,Math.min(1,(e.clientY-s.r.top)/s.r.height)),r={x:+Math.min(x,s.x).toFixed(4),y:+Math.min(y,s.y).toFixed(4),b:+Math.abs(x-s.x).toFixed(4),h:+Math.abs(y-s.y).toFixed(4)};s=null;box.remove();if(r.b>0.02&&r.h>0.02)fertig(r)}}
+
+/* ---------- Hausanschluss: geführte Skizze ---------- */
+const H=()=>AKT.ha;
+const MAT_K=["PVC DN 150","PVC DN 200","PVC DN 250","PVC DN 300","Steinzeug DN 200","Steinzeug DN 250","Beton DN 300","Beton DN 400","PP DN 200","PP DN 250"];
+const MAT_A=["PVC DN 150","PVC DN 160","PP DN 150","PP DN 160","Steinzeug DN 150","PVC DN 200"];
+function haStart(){if(!AKT.ha){AKT.ha={schritt:0,lage:"oben",schacht:"grundstueck",richt:"",kanal:"",anschluss:"",s_unten:"",s_oben:"",m0:"",m1:"",uhr:"",art:"Abzweig",
+  tk:"",d_unten:"",h_unten:"",d_oben:"",h_oben:"",m2:"",boegen:[],absturz:null,ms:false,t:"",einmass:"flucht",ecke:"0",ea:"",eb:"",r1:"",r2:"",hl:"",verbau:null,fremd:"",fotos:[],fertig:false};sichern()}wiz()}
+const SCHRITTE=[
+ ["Lage",()=>`<h2>Wo liegt das Haus?</h2><div class="kacheln">${[["oben","🏠<br>⬇<br>═══","Haus oben, Straße unten"],["unten","═══<br>⬆<br>🏠","Straße oben, Haus unten"]].map(([k,i,t])=>`<div class="k ${H().lage===k?"an":""}" onclick="hs('lage','${k}')"><span class="gross" style="line-height:1">${i}</span><b>${t}</b></div>`).join("")}</div>
+   <h2>Wo ist der Hausanschlussschacht?</h2><div class="kacheln">${[["grundstueck","Im Grundstück"],["grenze","An der Grenze"],["ohne","Kein Schacht"]].map(([k,t])=>`<div class="k ${H().schacht===k?"an":""}" onclick="hs('schacht','${k}')"><span class="gross">${k==="ohne"?"🚫":"⭕"}</span><b>${t}</b></div>`).join("")}</div>`,()=>H().lage&&H().schacht],
+ ["Fließrichtung",()=>`<h2>In welche Richtung fließt das Abwasser im Hauptkanal?</h2><p class="grau">Wie auf der Skizze: Blick vom Haus auf die Straße. Sie können auch über das Feld wischen.</p>
+   <div class="kacheln" id="wisch">${[["l","⬅️","nach links"],["r","➡️","nach rechts"]].map(([k,i,t])=>`<div class="k ${H().richt===k?"an":""}" onclick="hs('richt','${k}')"><span class="gross">${i}</span><b>${t}</b></div>`).join("")}</div>`,()=>H().richt,()=>{let x0=null;const w=$("#wisch");w.ontouchstart=e=>x0=e.touches[0].clientX;w.ontouchend=e=>{const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>60)hs("richt",d<0?"l":"r")}}],
+ ["Hauptkanal",()=>`<h2>Hauptkanal</h2><label>Material und Nennweite</label>${chips("kanal",MAT_K)}
+   <div class="raster"><div><label>Schacht <b>unterhalb</b> (in Fließrichtung) – Nr.</label><input value="${esc(H().s_unten)}" oninput="H().s_unten=this.value;sichern();vor()" placeholder="unbekannt"></div>
+   <div><label>Schacht <b>oberhalb</b> – Nr.</label><input value="${esc(H().s_oben)}" oninput="H().s_oben=this.value;sichern();vor()" placeholder="unbekannt"></div>
+   ${zf("m0","Haltungslänge Schacht – Schacht (m)")}</div>${fotoKnopf("Kanal / Schachtdeckel")}`,()=>H().kanal],
+ ["Einbindung",()=>`<div class="regel">Immer vom Schacht UNTERHALB gegen die Fließrichtung einmessen!</div><h2>Wo bindet der Anschluss in den Kanal ein?</h2>
+   <div class="raster">${zf("m1","Abstand Schacht unterhalb → Anschluss (m)")}</div>
+   <label>Anschlussart</label><div class="chips">${["Abzweig","Sattel","Stutzen"].map(t=>`<button class="chip ${H().art===t?"an":""}" onclick="hs('art','${t}')">${t}</button>`).join("")}</div>
+   <label>Lage am Rohrumfang (Uhr, in Fließrichtung gesehen)</label><div class="chips">${["9","10","11","12","1","2","3"].map(t=>`<button class="chip ${H().uhr===t?"an":""}" onclick="hs('uhr','${t}')">${t} Uhr</button>`).join("")}</div>${fotoKnopf("Einbindung")}`,()=>zahl(H().m1)!==null,null,
+   ()=>{const h=H(),m0=zahl(h.m0),m1=zahl(h.m1);return m0!==null&&m1!==null&&m1>m0?["fehler","Der Abstand zum Anschluss ist größer als die Haltungslänge."]:null}],
+ ["Tiefe am Kanal",()=>{const h=H(),t=tiefeKanal();return `<h2>Tiefe des Hauptkanals am Anschluss</h2>
+   <div class="raster">${zf("tk","Tiefe Sohle am Anschluss (m) – wenn bekannt")}</div>
+   ${zahl(h.tk)===null?`<div class="hinweis">Tiefe unbekannt? Dann bitte beide Nachbarschächte messen – die App rechnet die Tiefe am Anschluss über das Gefälle aus.</div>
+   <div class="raster">${zf("d_unten","Schacht unterhalb: Deckel → Sohle (m)")}${zf("d_oben","Schacht oberhalb: Deckel → Sohle (m)")}</div>
+`:""}<div id="live"></div>${fotoKnopf("Schacht mit Zollstock")}`},()=>zahl(H().tk)!==null||tiefeKanal()!==null],
+ ["Anschlussleitung",()=>{const h=H();return `<h2>Anschlussleitung</h2><label>Material und Nennweite</label>${chips("anschluss",MAT_A)}
+   <div class="raster">${zf("m2",h.schacht==="ohne"?"Länge Kanal → erster Bogen / Ende (m)":"Länge Kanal → erster Bogen (ohne Bogen: → Schacht) (m)")}</div>
+   <h2>Bögen</h2>${h.boegen.map((b,i)=>`<div class="karte"><b>Bogen ${i+1}</b><div class="chips" style="margin:6px 0">${["15","30","45","87"].map(w=>`<button class="chip ${b.winkel===w?"an":""}" onclick="H().boegen[${i}].winkel='${w}';sichern();wiz()">${w}°</button>`).join("")}</div>
+     <div class="raster"><div><label>Länge bis ${i===h.boegen.length-1?(h.schacht==="ohne"?"Ende":"Schacht"):"nächster Bogen"} (m)</label><input inputmode="decimal" value="${esc(b.l)}" oninput="H().boegen[${i}].l=this.value;sichern();vor()"></div>
+     <div><label>Einmaß ab Hausecke: Maß 1 (m, freiwillig)</label><input inputmode="decimal" value="${esc(b.a)}" oninput="H().boegen[${i}].a=this.value;sichern()"></div><div><label>Maß 2 (m)</label><input inputmode="decimal" value="${esc(b.b)}" oninput="H().boegen[${i}].b=this.value;sichern()"></div></div>
+     <button class="n" onclick="H().boegen.splice(${i},1);sichern();wiz()">Bogen entfernen</button></div>`).join("")}
+   <button class="n" onclick="H().boegen.push({winkel:'45',l:'',a:'',b:''});sichern();wiz()">＋ Bogen</button>
+   <h2>Absturz?</h2><div class="chips"><button class="chip ${!h.absturz?"an":""}" onclick="H().absturz=null;sichern();wiz()">Nein</button><button class="chip ${h.absturz?"an":""}" onclick="H().absturz=H().absturz||{abstand:'',hoehe:''};sichern();wiz()">Ja</button></div>
+   ${h.absturz?`<div class="raster"><div><label>Abstand vom Kanal (m)</label><input inputmode="decimal" value="${esc(h.absturz.abstand)}" oninput="H().absturz.abstand=this.value;sichern()"></div><div><label>Höhe des Absturzes (m)</label><input inputmode="decimal" value="${esc(h.absturz.hoehe)}" oninput="H().absturz.hoehe=this.value;sichern()"></div></div>`:""}
+   <h2>Ende der Leitung</h2><div class="chips"><button class="chip ${h.ms?"an":""}" onclick="H().ms=!H().ms;sichern();wiz()">Muffenstopfen gesetzt</button></div>${fotoKnopf("Leitung im Graben")}`},()=>H().anschluss&&zahl(H().m2)!==null],
+ ["Schacht im Grundstück",()=>{const h=H();if(h.schacht==="ohne")return `<div class="ok">Kein Schacht – dieser Schritt entfällt.</div>`;const e=einmass();return `<h2>Hausanschlussschacht</h2>
+   <div class="raster">${zf("t","Tiefe Schacht: Deckel → Sohle (m)")}</div><h2>Lage des Schachts</h2>
+   <div class="chips">${[["flucht","Maß in der Hausflucht + rechtwinklig"],["zwei","Zwei Abstände von zwei Hausecken"]].map(([k,t])=>`<button class="chip ${h.einmass===k?"an":""}" onclick="hs('einmass','${k}')">${t}</button>`).join("")}</div>
+   <label>Ab welcher Hausecke?</label><div class="chips">${[["0","oben links"],["1","oben rechts"],["2","unten rechts"],["3","unten links"]].map(([k,t])=>`<button class="chip ${h.ecke===k?"an":""}" onclick="hs('ecke','${k}')">${t}</button>`).join("")}</div>
+   ${h.einmass==="flucht"?`<div class="raster">${zf("ea","Maß 1 in der Hausflucht (m)")}${zf("eb","Maß 2 rechtwinklig dazu (m)")}</div>`
+   :`<div class="raster">${zf("hl","Abstand der beiden Hausecken (Hauswand, m)")}${zf("r1","Abstand Ecke 1 → Schacht (m)")}${zf("r2","Abstand Ecke 2 → Schacht (m)")}</div>
+<div id="live"></div>`}
+   ${fotoKnopf("Schacht")}`},()=>H().schacht==="ohne"||(zahl(H().t)!==null&&!!einmass())],
+ ["Verbau",()=>{const h=H(),m=maxTiefe();if(m===null||m<1.25)return `<div class="ok">Sohltiefe unter 1,25 m${m!==null?` (${fz(m)} m)`:""} – keine Angabe zu Verbau nötig.</div>`;
+   return `<h2>Sohltiefe ${fz(m)} m – wie wurde der Graben gesichert?</h2><div class="kacheln">${[["abgeboescht","⛰️","Abgeböscht"],["2.240","🧱","Stahlplattenverbau"],["2.250","🧱","Dielenkammerverbau"],["2.260","🧱","Spundbohlen"],["10.510","📦","Verbaukasten"]].map(([k,i,t])=>`<div class="k ${h.verbau&&h.verbau.art===k?"an":""}" onclick="H().verbau={art:'${k}',text:'${t}',laenge:(H().verbau||{}).laenge||''};sichern();wiz()"><span class="gross">${i}</span><b>${t}</b></div>`).join("")}</div>
+   ${h.verbau&&h.verbau.art!=="abgeboescht"?`<div class="raster"><div><label>Länge des verbauten Grabens (m)</label><input inputmode="decimal" value="${esc(h.verbau.laenge)}" oninput="H().verbau.laenge=this.value;sichern()"></div></div>`:""}${fotoKnopf("Verbau / Böschung")}`},()=>{const m=maxTiefe();return m===null||m<1.25||!!H().verbau}],
+ ["Abschluss",()=>{const p=pruefen();return `<h2>Fremdleitungen an der Grenze</h2><input value="${esc(H().fremd)}" oninput="H().fremd=this.value;sichern()" placeholder="z. B. Gas, Wasser, Strom, Telekom">
+   <h2>Prüfung</h2>${p.length?p.map(([s,t])=>`<div class="${s}">${t}</div>`).join(""):`<div class="ok">Keine Auffälligkeiten.</div>`}
+   <h2>Fotos (${H().fotos.length})</h2><div class="fotos">${H().fotos.map(f=>`<img src="${f.data}" title="${esc(f.schritt)}">`).join("")}</div>`},()=>true]];
+function chips(k,L){return `<div class="chips">${L.map(t=>`<button class="chip ${H()[k]===t?"an":""}" onclick="hs('${k}','${t}')">${t}</button>`).join("")}<input style="max-width:200px" placeholder="anderes …" value="${L.includes(H()[k])?"":esc(H()[k])}" oninput="H()['${k}']=this.value;sichern();vor()"></div>`}
+function zf(k,t){return `<div><label>${t}</label><input inputmode="decimal" value="${esc(H()[k])}" oninput="H()['${k}']=this.value;sichern();vor()" ></div>`}
+function fotoKnopf(t){const n=H().fotos.filter(f=>f.schritt===t).length;return `<div class="leiste"><button class="n" onclick="haFoto('${t}')">📷 Foto: ${t}${n?` (${n})`:""}</button></div>`}
+async function haFoto(t){const f=await foto();if(f){H().fotos.push({...f,schritt:t});await sichern();wiz()}}
+function hs(k,w){H()[k]=w;sichern();wiz()}
+function tiefeKanal(){const h=H(),tk=zahl(h.tk);if(tk!==null)return tk;const a=zahl(h.d_unten),b=zahl(h.d_oben),m0=zahl(h.m0),m1=zahl(h.m1);if(a===null||b===null||m0===null||m1===null||!m0)return null;return a+(b-a)*(m1/m0)}
+function einmass(){const h=H();if(h.einmass==="flucht"){const a=zahl(h.ea),b=zahl(h.eb);return a!==null&&b!==null?{a,b}:null}
+  const L=zahl(h.hl),r1=zahl(h.r1),r2=zahl(h.r2);if(!L||r1===null||r2===null)return null;const x=(r1*r1-r2*r2+L*L)/(2*L),y2=r1*r1-x*x;if(y2<0)return null;return {a:x,b:Math.sqrt(y2)}}
+function maxTiefe(){const h=H(),l=[tiefeKanal(),zahl(h.t),zahl(h.d_unten),zahl(h.d_oben)].filter(x=>x!==null);return l.length?Math.max(...l):null}
+function laengeLeitung(){const h=H();return (zahl(h.m2)||0)+h.boegen.reduce((s,b)=>s+(zahl(b.l)||0),0)}
+function pruefen(){const h=H(),p=[],tk=tiefeKanal(),t=zahl(h.t),L=laengeLeitung();
+  if(!h.richt)p.push(["fehler","Fließrichtung fehlt."]);
+  if(zahl(h.m0)!==null&&zahl(h.m1)!==null&&zahl(h.m1)>zahl(h.m0))p.push(["fehler","Abstand zum Anschluss größer als die Haltungslänge."]);
+  if(tk!==null&&t!==null&&h.schacht!=="ohne"){if(t>tk)p.push(["fehler",`Der Schacht (${fz(t)} m) ist tiefer als der Kanal am Anschluss (${fz(tk)} m) – so kann das Wasser nicht abfließen.`]);
+    else if(L>0){const g=(tk-t-(h.absturz?zahl(h.absturz.hoehe)||0:0))/L*100;if(g<0.5)p.push(["hinweis",`Gefälle der Anschlussleitung nur ${fz(g)} % (mindestens 0,5 % üblich). Bitte Maße prüfen.`]);else p.push(["ok",`Gefälle der Anschlussleitung ca. ${fz(g)} %.`])}}
+  if(zahl(h.tk)===null&&tk!==null)p.push(["hinweis",`Tiefe am Anschluss errechnet: ${fz(tk)} m.`]);
+  if(h.boegen.some(b=>zahl(b.l)===null))p.push(["hinweis","Bei mindestens einem Bogen fehlt die Länge."]);
+  if(!h.fotos.length)p.push(["hinweis","Noch kein Foto."]);return p}
+function wiz(){const h=H(),i=Math.min(h.schritt,SCHRITTE.length-1),[t,html,ok,nach,warn]=SCHRITTE[i];kopf(`Skizze – ${t}`,"uebersicht()");
+  const w=warn?warn():null;
+  $("#m").innerHTML=`<div class="fortschritt"><i style="width:${(i+1)/SCHRITTE.length*100}%"></i></div><div class="wiz"><div>${html()}${w?`<div class="${w[0]}">${w[1]}</div>`:""}
+   <div class="leiste" style="margin-top:18px">${i?`<button class="n" onclick="H().schritt=${i-1};sichern();wiz()">← Zurück</button>`:""}
+   ${i<SCHRITTE.length-1?`<button class="h" id="weiter" ${ok()?"":"disabled"} onclick="H().schritt=${i+1};sichern();wiz()">Weiter →</button>${ok()?"":`<button class="n" onclick="H().schritt=${i+1};sichern();wiz()">Überspringen</button>`}`
+   :`<button class="h" onclick="H().fertig=true;sichern();uebersicht()">✓ Skizze fertig</button>`}</div></div><div class="karte" id="vor"></div></div>`;if(nach)nach();vor()}
+/* Live-Vorschau (schematisch) */
+function live(){const el=$("#live");if(!el)return;const h=H(),st=SCHRITTE[Math.min(h.schritt,SCHRITTE.length-1)][0];let x="";
+  if(st==="Tiefe am Kanal"&&zahl(h.tk)===null){const t=tiefeKanal();if(t!==null)x=`<div class="ok">Errechnete Tiefe am Anschluss: <b>${fz(t)} m</b> (wird als „errechnet“ gekennzeichnet)</div>`}
+  if(st==="Schacht im Grundstück"&&h.einmass==="zwei"){const e=einmass();x=e?`<div class="ok">Errechnet: Maß 1 = <b>${fz(e.a)} m</b>, Maß 2 = <b>${fz(e.b)} m</b></div>`:zahl(h.r1)!==null&&zahl(h.r2)!==null&&zahl(h.hl)!==null?`<div class="fehler">Diese drei Maße passen nicht zusammen (Dreieck nicht möglich).</div>`:""}
+  el.innerHTML=x}
+function vor(){live();const e=$("#vor");if(!e)return;const wb=$("#weiter");if(wb)wb.disabled=!SCHRITTE[Math.min(H().schritt,SCHRITTE.length-1)][2]();const h=H(),o=h.lage!=="unten",K=o?300:90,G=o?225:165,Hy=o?60:215,r=o?-1:1,x=230,lr=h.richt==="r"?1:h.richt==="l"?-1:0;
+  const su=lr<0?40:420,so=lr<0?420:40,ex=x+(zahl(h.m2)!==null?0:0),ey=h.schacht==="grenze"?G+r*-14:h.schacht==="ohne"?G:(G+Hy+(o?40:0))/2+(o?10:-10);
+  const tk=tiefeKanal(),e2=einmass();let pts=[[x,K]],y=K;const n=h.boegen.length;h.boegen.forEach((b,i)=>{pts.push([x+(i+1)*28*(lr||1),K+r*(i+1)*(Math.abs(ey-K)/(n+1))])});pts.push([x+n*28*(lr||1),ey]);
+  const lab=(x,y,t,a="middle")=>t?`<text x="${x}" y="${y}" font-size="13" text-anchor="${a}">${esc(t)}</text>`:"";
+  const w=o?1:-1,p1=pts[1]||pts[0];
+  e.innerHTML=`<svg viewBox="0 0 460 380" style="width:100%;background:#fff"><line x1="10" y1="${G}" x2="450" y2="${G}" stroke="#000" stroke-dasharray="12 4 3 4"/>${lab(440,G-4,"Grenze","end")}
+   <rect x="${x-80}" y="${o?20:Hy+10}" width="160" height="80" fill="#fff" stroke="#000" stroke-width="2"/>${lab(x,(o?20:Hy+10)+45,"Haus")}
+   <line x1="${su}" y1="${K}" x2="${so}" y2="${K}" stroke="#000" stroke-width="3"/><circle cx="${su}" cy="${K}" r="8" fill="#fff" stroke="#000" stroke-width="2"/><circle cx="${so}" cy="${K}" r="8" fill="#fff" stroke="#000" stroke-width="2"/>
+   ${lab(su,K+w*24+4,(h.s_unten?"S "+h.s_unten:"Schacht")+" ▼")}${lab(so,K+w*24+4,h.s_oben?"S "+h.s_oben:"Schacht")}
+   ${lr?`<polygon points="${340-lr*10},${K+w*14-5} ${340-lr*10},${K+w*14+5} ${340+lr*10},${K+w*14}" fill="#000"/>`:""}${lab(lr<0?330:130,K+w*40+4,h.kanal)}
+   ${h.m1?`<line x1="${su}" y1="${K-w*12}" x2="${x}" y2="${K-w*12}" stroke="#777"/>${lab((su+x)/2,K-w*18+(o?0:8),"← "+h.m1+" m (gegen Fließr.)")}`:""}
+   <polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#000" stroke-width="3"/>${pts.slice(1,-1).map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="4"/>${lab(p[0]+(lr||1)*10,p[1]+4,h.boegen[i].winkel+"°",lr<0?"end":"start")}`).join("")}
+   ${h.schacht!=="ohne"?`<circle cx="${pts[pts.length-1][0]}" cy="${ey}" r="9" fill="#fff" stroke="#000" stroke-width="2.5"/>${lab(pts[pts.length-1][0]+14,ey+4,h.t?"T "+h.t+" m":"","start")}`:h.ms?lab(pts[pts.length-1][0]+8,ey,"MS","start"):""}
+   ${lab((x+p1[0])/2-(lr>0?-10:10),(K+p1[1])/2,h.anschluss,lr>0?"start":"end")}${h.absturz?lab(x+(lr<0?-12:12),K-w*40,"Absturz "+(h.absturz.hoehe||"?")+" m",lr<0?"end":"start"):""}
+   ${tk!==null?lab(x,K+w*40+4,"Sohle "+fz(tk)+" m"+(zahl(h.tk)===null?" (err.)":"")):""}
+   ${e2?lab(10,o?372:14,`Schacht eingemessen: ${fz(e2.a)} / ${fz(e2.b)} m ab Hausecke`,"start"):""}</svg><p class="grau">Schematische Vorschau – das Büro bekommt eine bearbeitbare Skizze.</p>`}
+
+/* ---------- Senden ---------- */
+async function senden(){const a=AKT;if(!a.auftrag.id&&!a.auftrag.bezeichnung.trim())return alert("Bitte eine Bezeichnung für den neuen Auftrag eintragen.");
+  if(!a.kolonne.length&&!confirm("Niemand bei „Wer ist dabei?“ ausgewählt. Trotzdem senden?"))return;
+  a.gesendet_am=new Date().toISOString();const name=`SN-Meldung_${POLIER.replace(/[^\wäöüÄÖÜß-]+/g,"_")}_${a.datum}_${a.id}`;const text=JSON.stringify(a);
+  const versuche=[[name+".json","application/json"],[name+".txt","text/plain"]];
+  for(const [n,t] of versuche){const f=new File([text],n,{type:t});if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:n});a.gesendet=a.gesendet_am;await sichern();toast("Gesendet – bitte im OneDrive-Ordner ablegen.");return uebersicht()}catch(e){if(e.name==="AbortError")return}}}
+  const u=URL.createObjectURL(new Blob([text],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download=name+".json";l.click();a.gesendet=a.gesendet_am;await sichern();
+  alert("Die Meldung wurde unter „Downloads“ gespeichert. Bitte in der OneDrive-App in den Austauschordner hochladen.");uebersicht()}
+start();
+</script></body></html>
